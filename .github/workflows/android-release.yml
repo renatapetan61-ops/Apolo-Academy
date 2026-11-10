@@ -10,6 +10,9 @@ on:
       - "gradle.properties"
       - ".github/workflows/android-release.yml"
 
+permissions:
+  contents: read
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -31,15 +34,27 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+      - name: Validate release signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.APOLO_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.APOLO_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.APOLO_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.APOLO_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required release signing secret: $name"
+              exit 1
+            fi
+          done
       - name: Decode release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.APOLO_RELEASE_KEYSTORE_BASE64 }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "Missing APOLO_RELEASE_KEYSTORE_BASE64 repository secret"
-            exit 1
-          fi
+          set -euo pipefail
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/apolo-release.jks"
+          test -s "$RUNNER_TEMP/apolo-release.jks"
           echo "APOLO_RELEASE_KEYSTORE_FILE=$RUNNER_TEMP/apolo-release.jks" >> "$GITHUB_ENV"
       - name: Build signed Release APK
         env:
@@ -47,11 +62,15 @@ jobs:
           APOLO_RELEASE_KEY_ALIAS: ${{ secrets.APOLO_RELEASE_KEY_ALIAS }}
           APOLO_RELEASE_KEY_PASSWORD: ${{ secrets.APOLO_RELEASE_KEY_PASSWORD }}
         run: gradle --no-daemon :app:assembleRelease
-      - name: Verify APK signature
+      - name: Verify APK signature, alignment and identity
         run: |
+          set -euo pipefail
           APK="app/build/outputs/apk/release/app-release.apk"
-          test -f "$APK"
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$APK"
+          test -s "$APK"
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose --print-certs "$APK"
+          $ANDROID_HOME/build-tools/35.0.0/zipalign -c -v 4 "$APK"
+          echo "APK SHA-256:"
+          sha256sum "$APK"
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
