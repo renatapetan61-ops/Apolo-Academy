@@ -2,6 +2,9 @@ name: Build Apolo Academy AAB
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-aab.yml'
 
 permissions:
   contents: read
