@@ -12,8 +12,27 @@ android {
         applicationId = "com.apolo.academy"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            val path = System.getenv("APOLO_RELEASE_KEYSTORE_FILE")
+            if (!path.isNullOrBlank()) storeFile = file(path)
+            storePassword = System.getenv("APOLO_RELEASE_STORE_PASSWORD")
+            keyAlias = System.getenv("APOLO_RELEASE_KEY_ALIAS")
+            keyPassword = System.getenv("APOLO_RELEASE_KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            if (!System.getenv("APOLO_RELEASE_KEYSTORE_FILE").isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     buildFeatures { compose = true }
@@ -31,7 +50,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
