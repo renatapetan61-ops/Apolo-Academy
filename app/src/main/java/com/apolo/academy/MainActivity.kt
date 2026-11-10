@@ -63,7 +63,7 @@ private fun ApoloAcademyApp() {
             }
         ) { padding ->
             when (selected) {
-                Tab.HOME -> HomeScreen(navy, gold, Modifier.padding(padding))
+                Tab.HOME -> HomeScreen(navy, gold, Modifier.padding(padding)) { selected = Tab.LESSONS }
                 Tab.LESSONS -> LessonsScreen(Modifier.padding(padding))
                 Tab.TUTOR -> TutorScreen(Modifier.padding(padding))
             }
@@ -72,7 +72,7 @@ private fun ApoloAcademyApp() {
 }
 
 @Composable
-private fun HomeScreen(navy: Color, gold: Color, modifier: Modifier = Modifier) {
+private fun HomeScreen(navy: Color, gold: Color, modifier: Modifier = Modifier, onStartLesson: () -> Unit) {
     LazyColumn(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Text("APOLO ACADEMY", color = Color(0xFF64748B), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
@@ -87,7 +87,7 @@ private fun HomeScreen(navy: Color, gold: Color, modifier: Modifier = Modifier) 
                     Text("Fundamentos do desenho", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     Text("Aula 1 · Linhas, formas e observação", color = Color(0xFFD5DCE8))
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = { }) { Text("Começar aula") }
+                    Button(onClick = onStartLesson) { Text("Começar aula") }
                 }
             }
         }
@@ -119,10 +119,22 @@ private fun LessonsScreen(modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Biblioteca de aulas", fontSize = 26.sp, fontWeight = FontWeight.Bold)
         Text("Aprenda no seu ritmo, do primeiro traço às técnicas avançadas.", color = Color(0xFF64748B))
-        LevelCard("01", "Desenho para iniciantes", "Controle do traço, formas e observação", "Fundamentos")
-        LevelCard("02", "Perspectiva e profundidade", "Pontos de fuga, caixas e ambientes", "Intermediário")
-        LevelCard("03", "Figura humana", "Proporções, gesto e anatomia artística", "Avançado")
+        LessonRow("01", "Desenho para iniciantes", "Controle do traço, formas e observação", "Fundamentos")
+        LessonRow("02", "Perspectiva e profundidade", "Pontos de fuga, caixas e ambientes", "Intermediário")
+        LessonRow("03", "Figura humana", "Proporções, gesto e anatomia artística", "Avançado")
         Text("A biblioteca internacional e os links de referência serão adicionados em uma próxima etapa.", fontSize = 12.sp, color = Color(0xFF64748B))
+    }
+}
+
+@Composable
+@Composable
+private fun LessonRow(number: String, title: String, description: String, level: String) {
+    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text("$number · $level", color = Color(0xFF9A6700), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(description, color = Color(0xFF64748B), fontSize = 13.sp)
+        }
     }
 }
 
