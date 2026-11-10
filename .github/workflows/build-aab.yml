@@ -1,4 +1,4 @@
-name: Build Apolo Academy AAB
+name: Build Apolo Academy Release
 
 on:
   workflow_dispatch:
@@ -7,10 +7,10 @@ on:
       - '.github/workflows/build-aab.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build-aab:
+  build-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -39,7 +39,7 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/apolo-signing/apolo-release.jks"
           test -s "$RUNNER_TEMP/apolo-signing/apolo-release.jks"
 
-      - name: Build signed Android App Bundle
+      - name: Build signed APK and Android App Bundle
         env:
           APOLO_RELEASE_KEYSTORE_FILE: ${{ runner.temp }}/apolo-signing/apolo-release.jks
           APOLO_RELEASE_STORE_PASSWORD: ${{ secrets.APOLO_RELEASE_STORE_PASSWORD }}
@@ -49,12 +49,26 @@ jobs:
           test -n "$APOLO_RELEASE_STORE_PASSWORD" || (echo "::error::Missing APOLO_RELEASE_STORE_PASSWORD" && exit 1)
           test -n "$APOLO_RELEASE_KEY_ALIAS" || (echo "::error::Missing APOLO_RELEASE_KEY_ALIAS" && exit 1)
           test -n "$APOLO_RELEASE_KEY_PASSWORD" || (echo "::error::Missing APOLO_RELEASE_KEY_PASSWORD" && exit 1)
-          gradle bundleRelease --no-daemon
+          gradle assembleRelease bundleRelease --no-daemon
 
-      - name: Upload AAB artifact
+      - name: Upload APK and AAB artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: apolo-academy-release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+          name: apolo-academy-release-files
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v1.0.0 \
+            app/build/outputs/apk/release/app-release.apk \
+            app/build/outputs/bundle/release/app-release.aab \
+            --title "Apolo Academy v1.0.0" \
+            --notes "Primeira versão pública do Apolo Academy. APK para instalação direta e AAB para distribuição em lojas compatíveis." \
+            --latest
