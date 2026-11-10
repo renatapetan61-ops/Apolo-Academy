@@ -4,6 +4,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseKeystorePath = providers.environmentVariable("APOLO_RELEASE_KEYSTORE_FILE").orNull
+val releaseStorePassword = providers.environmentVariable("APOLO_RELEASE_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("APOLO_RELEASE_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("APOLO_RELEASE_KEY_PASSWORD").orNull
+val hasReleaseSigning = listOf(
+    releaseKeystorePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.apolo.academy"
     compileSdk = 35
@@ -16,20 +27,21 @@ android {
         versionName = "1.1.0"
     }
 
-    signingConfigs {
-        create("release") {
-            val path = System.getenv("APOLO_RELEASE_KEYSTORE_FILE")
-            if (!path.isNullOrBlank()) storeFile = file(path)
-            storePassword = System.getenv("APOLO_RELEASE_STORE_PASSWORD")
-            keyAlias = System.getenv("APOLO_RELEASE_KEY_ALIAS")
-            keyPassword = System.getenv("APOLO_RELEASE_KEY_PASSWORD")
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(requireNotNull(releaseKeystorePath))
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
-            if (!System.getenv("APOLO_RELEASE_KEYSTORE_FILE").isNullOrBlank()) {
+            if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
@@ -41,6 +53,23 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+}
+
+// Never allow a release artifact to be produced without the permanent release key.
+// Debug builds remain available without signing secrets.
+tasks.configureEach {
+    if (name == "assembleRelease" || name == "bundleRelease") {
+        doFirst {
+            check(hasReleaseSigning) {
+                "Release signing is mandatory. Configure APOLO_RELEASE_KEYSTORE_FILE, " +
+                    "APOLO_RELEASE_STORE_PASSWORD, APOLO_RELEASE_KEY_ALIAS and " +
+                    "APOLO_RELEASE_KEY_PASSWORD. Do not use a debug key for releases."
+            }
+            check(file(requireNotNull(releaseKeystorePath)).isFile) {
+                "Release keystore file does not exist: $releaseKeystorePath"
+            }
+        }
+    }
 }
 
 dependencies {
